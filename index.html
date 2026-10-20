@@ -100,9 +100,11 @@
               <button class="sb-btn sb-btn-unsure" data-r="unsure">微妙</button>
               <button class="sb-btn sb-btn-primary" data-r="known">覚えた</button>
             </div>
+            <p class="swipe-help small muted" id="swipeHelp" hidden>← もう一度　↓ 微妙　覚えた → でもスワイプできます</p>
           </div>
         </div>
       </div>
+      <div class="swipe-hint" id="swipeHint" aria-hidden="true"></div>
       <div class="confetti" id="confetti" aria-hidden="true"></div>
     </div>
     <div class="sb-card sb-card-elevated" id="doneCard" hidden>
@@ -193,17 +195,33 @@
         </table>
       </details>
     </div>
+    <form class="sb-card" id="syncForm" style="display:flex;flex-direction:column;gap:12px">
+      <h2>スプレッドシートに記録（スマホと共有）</h2>
+      <p class="note" style="margin:0">単語のスプレッドシートに Apps Script（gas/Code.gs）を入れて「ウェブアプリ」として公開し、その URL と合言葉をここに入れます。スマホとPCの両方で同じ設定をすると、どちらでやった記録もここにまとまります。</p>
+      <div class="cols" style="gap:16px">
+        <div class="sb-field" style="flex:2 1 320px"><label class="sb-label" for="syncUrl">ウェブアプリの URL</label><input class="sb-input" id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec"></div>
+        <div class="sb-field" style="flex:1 1 160px"><label class="sb-label" for="syncToken">合言葉</label><input class="sb-input" id="syncToken" type="password" autocomplete="off"></div>
+        <div class="sb-field" style="flex:1 1 140px"><label class="sb-label" for="syncDevice">この端末の名前</label><input class="sb-input" id="syncDevice" placeholder="例：iPhone"></div>
+      </div>
+      <div class="row">
+        <button class="sb-btn sb-btn-primary" type="submit">保存して接続</button>
+        <button class="sb-btn sb-btn-secondary" type="button" id="syncPull" hidden>最新の記録を読み込む</button>
+        <button class="sb-btn sb-btn-secondary" type="button" id="syncUpload" hidden></button>
+      </div>
+      <p class="small muted" style="margin:0" id="syncStatus" role="status"></p>
+    </form>
     <div class="row">
       <button class="sb-btn sb-btn-secondary" id="csv">CSVで書き出す</button>
       <button class="sb-btn sb-btn-secondary" id="backup">バックアップを書き出す</button>
       <label class="sb-btn sb-btn-secondary" style="display:inline-flex;align-items:center">バックアップを読み込む<input type="file" id="restore" accept=".json,application/json" hidden></label>
     </div>
-    <p class="note" style="margin:0">記録はこのブラウザに自動で保存されます。ブラウザの閲覧データを消すと記録も消えるので、ときどき「バックアップを書き出す」で保存しておくと安心です。別のブラウザやPCへは、バックアップを読み込めば引き継げます。</p>
+    <p class="note" style="margin:0">スプレッドシートと連携していないときは、記録はこのブラウザだけに保存されます。ブラウザの閲覧データを消すと記録も消えるので、連携するか、ときどき「バックアップを書き出す」で保存しておくと安心です。</p>
   </section>
 </main>
 
 <script src="words.js"></script>
 <script src="app.js"></script>
+<script src="sync.js"></script>
 <script src="music/tracks.js"></script>
 <script src="bgm.js"></script>
 </body>

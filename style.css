@@ -154,3 +154,13 @@ body.bgx-stripe,body.bgx-gingham,body.bgx-polka,body.bgx-confetti,body.bgx-wave,
 #bgmToggle.playing svg{color:var(--primary);animation:bob 1.2s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(-2px)}}
 @media (prefers-reduced-motion:reduce){#bgmToggle.playing svg{animation:none}}
+
+/* ---------- swipe ---------- */
+#stage[data-flipped] .card-wrap{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+#stage[data-flipped] .card-wrap.dragging{cursor:grabbing}
+.swipe-help{margin:0;text-align:center}
+.swipe-hint{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);padding:10px 22px;border-radius:9999px;font-size:20px;font-weight:800;letter-spacing:.05em;pointer-events:none;opacity:0;z-index:2;transition:opacity .1s}
+.swipe-hint.again{background:#e43200;color:#fff}
+.swipe-hint.unsure{background:#5bafc1;color:#1a1a1a}
+.swipe-hint.known{background:#87cc5a;color:#1a1a1a}
+@media (max-width:600px){.fc-word{font-size:40px;line-height:48px;overflow-wrap:anywhere;word-break:normal}.fc-ex{font-size:20px;line-height:32px}.fc-meaning{font-size:22px;line-height:30px}}

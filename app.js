@@ -158,6 +158,7 @@ window.addEventListener('hashchange', () => show(location.hash.slice(1)));
 // ---------- flashcards ----------
 let deck = [], i = 0, counts = { known: 0, unsure: 0, again: 0 }, missed = [], busy = false;
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = matchMedia('(pointer: coarse)').matches;
 function shuffle(a) { a = a.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
 function startDeck(d) { deck = d; i = 0; counts = { known: 0, unsure: 0, again: 0 }; missed = []; renderCard(); }
 function renderCard() {
@@ -184,7 +185,7 @@ function renderCard() {
   $('meaning').textContent = w.meaning;
   setFlipped(false);
 }
-function setFlipped(f) { $('answer').hidden = !f; $('front').hidden = f; $('back').hidden = !f; if (f) $('back').querySelector('[data-r="known"]').focus(); }
+function setFlipped(f) { $('answer').hidden = !f; $('front').hidden = f; $('back').hidden = !f; $('stage').toggleAttribute('data-flipped', f); if (f && !coarse) $('back').querySelector('[data-r="known"]').focus(); }
 $('flip').addEventListener('click', () => setFlipped(true));
 const dirs = { known: 'fly-right', unsure: 'fly-down', again: 'fly-left' };
 function confetti() {
@@ -218,6 +219,44 @@ function answer(r) {
   setTimeout(next, 520);
 }
 $('back').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) answer(b.dataset.r); });
+
+// ---------- swipe (答えを見たあと：左＝もう一度、下＝微妙、右＝覚えた) ----------
+(function () {
+  const wrap = $('cardWrap'), hint = $('swipeHint');
+  const LABEL = { again: 'もう一度', unsure: '微妙', known: '覚えた' };
+  const TH = 90;
+  let sx = 0, sy = 0, dx = 0, dy = 0, id = null;
+  $('swipeHelp').hidden = !coarse;
+  const dirOf = (x, y) => (y > Math.abs(x) && y > 0 ? 'unsure' : x < 0 ? 'again' : 'known');
+  function showHint(x, y) {
+    const d = dirOf(x, y), dist = d === 'unsure' ? y : Math.abs(x);
+    hint.className = 'swipe-hint ' + d; hint.textContent = LABEL[d];
+    hint.style.opacity = Math.min(1, Math.max(0, (dist - 20) / (TH - 20)));
+  }
+  function reset() { hint.style.opacity = 0; wrap.classList.remove('dragging'); }
+  wrap.addEventListener('pointerdown', (e) => {
+    if (!$('stage').hasAttribute('data-flipped') || busy || e.target.closest('button')) return;
+    id = e.pointerId; sx = e.clientX; sy = e.clientY; dx = dy = 0;
+    wrap.setPointerCapture(id); wrap.classList.add('dragging'); wrap.style.transition = 'none';
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== id) return;
+    dx = e.clientX - sx; dy = e.clientY - sy;
+    const y = Math.max(dy, -30); // 上方向にはほとんど動かさない
+    wrap.style.transform = 'translate(' + dx + 'px,' + y + 'px) rotate(' + (dx / 22) + 'deg)';
+    showHint(dx, dy);
+  });
+  function end(e) {
+    if (e.pointerId !== id) return;
+    id = null; reset();
+    const d = dirOf(dx, dy), dist = d === 'unsure' ? dy : Math.abs(dx);
+    wrap.style.transition = ''; // ここから先は CSS のアニメーションに任せる
+    if (dist >= TH && !busy) { wrap.style.transform = ''; answer(d); }
+    else { wrap.style.transform = ''; }
+  }
+  wrap.addEventListener('pointerup', end);
+  wrap.addEventListener('pointercancel', end);
+})();
 $('retry').addEventListener('click', () => { if (missed.length) startDeck(missed.slice()); });
 $('restart').addEventListener('click', () => startDeck(shuffle(allWords()).slice(0, SIZE)));
 
