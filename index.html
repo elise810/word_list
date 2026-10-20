@@ -18,10 +18,31 @@
       <button class="tab" data-view="cards">フラッシュカード</button>
       <button class="tab" data-view="words">単語リスト</button>
       <button class="tab" data-view="stats">記録</button>
+      <button class="tab bg-btn" id="bgmToggle" aria-expanded="false" aria-controls="bgmPanel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>BGM</button>
       <button class="tab bg-btn" id="bgToggle" aria-expanded="false" aria-controls="bgPanel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>背景</button>
     </nav>
   </div>
 </header>
+<div class="bg-panel" id="bgmPanel" hidden>
+  <div class="bg-panel-in">
+    <div class="row between">
+      <h2>BGM</h2>
+      <div class="row">
+        <label class="small muted" for="bgmVol">音量</label>
+        <input type="range" id="bgmVol" min="0" max="100" value="40" style="width:160px;accent-color:#e43200">
+        <button class="sb-btn sb-btn-primary" id="bgmPlay" type="button">再生</button>
+      </div>
+    </div>
+    <div class="small muted">つくった曲（コードで演奏）</div>
+    <div class="chips" id="bgmGen"></div>
+    <div class="small muted">フリー音源</div>
+    <div class="chips" id="bgmFiles">
+      <label class="chip chip-add">＋ ファイルを選ぶ<input type="file" id="bgmLocal" accept="audio/*" hidden></label>
+    </div>
+    <p class="note" id="bgmFilesEmpty" style="margin:0" hidden>music フォルダに曲を入れて music/tracks.js に登録すると、ここに並びます。「ファイルを選ぶ」で選んだ曲は、このページを閉じるまで流れます。</p>
+    <p class="small muted" id="bgmCredit" style="margin:0" hidden></p>
+  </div>
+</div>
 <div class="bg-panel" id="bgPanel" hidden>
   <div class="bg-panel-in">
     <div class="row between"><h2>背景を選ぶ</h2><span class="small muted">選んだ背景はこのブラウザに保存されます</span></div>
@@ -183,5 +204,7 @@
 
 <script src="words.js"></script>
 <script src="app.js"></script>
+<script src="music/tracks.js"></script>
+<script src="bgm.js"></script>
 </body>
 </html>
