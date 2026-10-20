@@ -164,3 +164,5 @@ body.bgx-stripe,body.bgx-gingham,body.bgx-polka,body.bgx-confetti,body.bgx-wave,
 .swipe-hint.unsure{background:#5bafc1;color:#1a1a1a}
 .swipe-hint.known{background:#87cc5a;color:#1a1a1a}
 @media (max-width:600px){.fc-word{font-size:40px;line-height:48px;overflow-wrap:anywhere;word-break:normal}.fc-ex{font-size:20px;line-height:32px}.fc-meaning{font-size:22px;line-height:30px}}
+
+kbd{display:inline-block;min-width:1.6em;padding:1px 6px;border:1px solid var(--outline-variant);border-bottom-width:2px;border-radius:6px;background:var(--surface);font-family:var(--font-en);font-size:12px;line-height:16px;text-align:center;color:var(--on-surface)}
