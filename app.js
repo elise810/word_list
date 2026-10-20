@@ -147,12 +147,12 @@ const views = ['cards', 'words', 'stats'];
 function show(v) {
   if (!views.includes(v)) v = 'cards';
   views.forEach((x) => { $('v-' + x).hidden = x !== v; });
-  document.querySelectorAll('.tab').forEach((t) => { if (t.dataset.view === v) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
+  document.querySelectorAll('.tab[data-view]').forEach((t) => { if (t.dataset.view === v) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); });
   if (v === 'words') renderList();
   if (v === 'stats') renderStats();
   if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v);
 }
-document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => show(t.dataset.view)));
+document.querySelectorAll('.tab[data-view]').forEach((t) => t.addEventListener('click', () => show(t.dataset.view)));
 window.addEventListener('hashchange', () => show(location.hash.slice(1)));
 
 // ---------- flashcards ----------
