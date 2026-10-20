@@ -4,4 +4,5 @@
 // 例：
 // { title: '曲名', file: 'music/ファイル名.mp3', credit: '作曲者名', license: 'CC0' },
 window.MUSIC_TRACKS = [
+  { title: '受け継がれゆく心', file: 'music/296_BPM85.mp3', credit: 'BGMer', license: 'BGMer 利用規約' },
 ];
