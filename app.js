@@ -185,7 +185,7 @@ function renderCard() {
   $('meaning').textContent = w.meaning;
   setFlipped(false);
 }
-function setFlipped(f) { $('answer').hidden = !f; $('front').hidden = f; $('back').hidden = !f; $('stage').toggleAttribute('data-flipped', f); $('swipeHelp').hidden = !f; $('frontHelp').hidden = f || coarse; }
+function setFlipped(f) { $('answer').hidden = !f; $('front').hidden = f; $('back').hidden = !f; $('stage').toggleAttribute('data-flipped', f); }
 $('flip').addEventListener('click', () => setFlipped(true));
 const dirs = { known: 'fly-right', unsure: 'fly-down', again: 'fly-left' };
 function confetti() {
@@ -226,8 +226,6 @@ $('back').addEventListener('click', (e) => { const b = e.target.closest('[data-r
   const LABEL = { again: 'もう一度', unsure: '微妙', known: '覚えた' };
   const TH = 90;
   let sx = 0, sy = 0, dx = 0, dy = 0, id = null;
-  if (!coarse) $('swipeHelp').innerHTML = '<kbd>←</kbd> もう一度　<kbd>↓</kbd> 微妙　<kbd>→</kbd> 覚えた';
-  $('swipeHelp').hidden = !$('stage').hasAttribute('data-flipped'); $('frontHelp').hidden = coarse || $('stage').hasAttribute('data-flipped');
   const dirOf = (x, y) => (y > Math.abs(x) && y > 0 ? 'unsure' : x < 0 ? 'again' : 'known');
   function showHint(x, y) {
     const d = dirOf(x, y), dist = d === 'unsure' ? y : Math.abs(x);
@@ -442,7 +440,7 @@ $('bgFile').addEventListener('change', (e) => {
 });
 applyBg(getStore(BG_KEY) || 'shapes');
 
-// ---------- keyboard (PC)：Enter / Space で裏返す、← ↓ → で答える ----------
+// ---------- keyboard (PC)：Enter / Space / ↑ で裏返す、← ↓ → で答える ----------
 document.addEventListener('keydown', (e) => {
   if ($('v-cards').hidden || e.altKey || e.ctrlKey || e.metaKey) return;
   const t = e.target;
@@ -451,7 +449,7 @@ document.addEventListener('keydown', (e) => {
   if (!$('bgPanel').hidden || !$('bgmPanel').hidden) { if (e.key === 'Escape') { $('bgPanel').hidden = true; $('bgmPanel').hidden = true; } return; }
   if ($('stage').hidden) { if (e.key === 'Enter') { e.preventDefault(); $('restart').click(); } return; }
   const flipped = $('stage').hasAttribute('data-flipped');
-  if (!flipped && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setFlipped(true); return; }
+  if (!flipped && (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowUp')) { e.preventDefault(); setFlipped(true); return; }
   const map = { ArrowLeft: 'again', ArrowDown: 'unsure', ArrowRight: 'known' };
   if (flipped && map[e.key]) { e.preventDefault(); if (!e.repeat) answer(map[e.key]); }
 });
