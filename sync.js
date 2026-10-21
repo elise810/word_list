@@ -48,9 +48,10 @@
   };
 
   // ---------- receive (JSONP) ----------
+  let jsonpSeq = 0;
   function jsonp(params) {
     return new Promise((resolve, reject) => {
-      const cb = '__wrSync' + Date.now();
+      const cb = '__wrSync' + Date.now() + '_' + (++jsonpSeq);
       const s = document.createElement('script');
       const done = (fn, v) => { clearTimeout(t); delete window[cb]; s.remove(); fn(v); };
       const t = setTimeout(() => done(reject, new Error('timeout')), 20000);
@@ -61,6 +62,31 @@
       document.head.appendChild(s);
     });
   }
+  // ---------- 単語（全シート＝セット）を Apps Script から読み込む ----------
+  async function loadWords() {
+    if (!on()) return;
+    try {
+      const data = await jsonp({ action: 'words' });
+      if (!data || !data.ok || !Array.isArray(data.sets)) throw new Error(data && data.error === 'token' ? 'token' : 'words');
+      const map = new Map();
+      data.sets.forEach((set) => (set.words || []).forEach((w) => {
+        const key = String(w.word).toLowerCase();
+        if (map.has(key)) { const x = map.get(key); if (!x.sets.includes(set.name)) x.sets.push(set.name); }
+        else map.set(key, { word: w.word, meaning: w.meaning, example: w.example || '', sets: [set.name] });
+      }));
+      const list = Array.from(map.values());
+      if (!list.length) throw new Error('empty');
+      const before = WORDS.length;
+      sheet.words = list; sheet.at = new Date().toISOString(); sheet.error = ''; writeSheetCfg(sheet);
+      applyWords(list, 'gas');
+      const diff = WORDS.length !== before ? '（' + (WORDS.length - before > 0 ? '+' : '') + (WORDS.length - before) + '語）' : '';
+      setSheetStatus('Apps Script 経由で ' + data.sets.length + ' セット・' + list.length + '語を読み込みました' + diff + '（' + data.sets.map((x) => x.name).join('・') + '）');
+    } catch (e) {
+      console.warn('words via GAS failed', e);
+      setSheetStatus('Apps Script から単語を読み込めませんでした。いまは前回読み込んだ ' + WORDS.length + '語を使っています。');
+    }
+  }
+
   async function pull() {
     if (!on()) { renderSync(); return; }
     setStatus('シートから記録を読み込み中…');
@@ -103,15 +129,17 @@
     const t = at ? (at.getMonth() + 1) + '/' + at.getDate() + ' ' + pad(at.getHours()) + ':' + pad(at.getMinutes()) : '';
     setStatus('シートと連携中' + (server ? '（シートの合計 ' + (server.total || 0) + '語）' : '') + (queue.length ? '・送信待ち ' + queue.length + '件' : '') + (t ? '　' + t : ''));
   }
+  $('sheetReload').addEventListener('click', (e) => { if (on()) { e.stopImmediatePropagation(); loadWords(); } }, true);
   $('syncForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const url = $('syncUrl').value.trim();
     cfg = Object.assign({}, cfg, { url, token: $('syncToken').value.trim(), device: $('syncDevice').value.trim() || guessDevice(), error: '' });
     write(SYNC_KEY, cfg);
     renderSync();
-    if (on()) pull().then(flush);
+    window.WR_GAS_ACTIVE = on();
+    if (on()) { loadWords(); pull().then(flush); }
   });
-  $('syncPull').addEventListener('click', () => flush().then(pull));
+  $('syncPull').addEventListener('click', () => { loadWords(); flush().then(pull); });
   // 連携前の記録（このブラウザの日ごとの合計）を1回だけ送る
   $('syncUpload').addEventListener('click', async () => {
     const local = cfg.snapshot || {};
@@ -126,9 +154,15 @@
     setTimeout(pull, 2500);
   });
   document.querySelector('.tab[data-view="stats"]').addEventListener('click', () => { if (on()) flush().then(pull); });
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && on()) flush().then(pull); });
+  let lastWords = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !on()) return;
+    flush().then(pull);
+    if (Date.now() - lastWords > 300000) { lastWords = Date.now(); loadWords(); }
+  });
   window.addEventListener('online', flush);
 
+  window.WR_GAS_ACTIVE = on();
   renderSync();
-  if (on()) flush().then(pull);
+  if (on()) { loadWords(); flush().then(pull); }
 })();

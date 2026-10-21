@@ -8,7 +8,7 @@ const SIZE = 20, STEP = 30;
 const $ = (id) => document.getElementById(id);
 
 // ---------- words source ----------
-function number(list) { return list.map((w, n) => ({ word: w.word, meaning: w.meaning, example: w.example || '', no: n + 1 })); }
+function number(list) { return list.map((w, n) => ({ word: w.word, meaning: w.meaning, example: w.example || '', sets: w.sets || [], no: n + 1 })); }
 function readSheetCfg() { try { return JSON.parse(localStorage.getItem(SHEET_KEY)) || {}; } catch (e) { return {}; } }
 function writeSheetCfg(c) { try { localStorage.setItem(SHEET_KEY, JSON.stringify(c)); } catch (e) {} }
 // 使う Google スプレッドシート（変えたいときはここか、単語リスト画面の「スプレッドシート連携」で）
@@ -91,17 +91,19 @@ async function loadSheetRows(url) {
   if (/^\s*</.test(text)) throw new Error('not csv');
   return parseCsv(text);
 }
+// Apps Script 連携中は、単語もそちら（全シート）から読む（sync.js）
+window.WR_GAS_ACTIVE = (() => { try { const c = JSON.parse(localStorage.getItem('word-review-sync')) || {}; return /^https:\/\/script\.google(usercontent)?\.com\//.test(c.url || ''); } catch (e) { return false; } })();
 async function syncSheet() {
+  if (window.WR_GAS_ACTIVE) { setSheetStatus('Apps Script 経由で読み込み中…'); return; }
   if (!sheet.url) { renderSheetStatus(); return; }
   setSheetStatus('読み込み中…');
   try {
     const words = rowsToWords(await loadSheetRows(sheet.url));
+    if (window.WR_GAS_ACTIVE) return; // Apps Script 連携中はそちらの単語（全シート）を使う
     if (!words.length) throw new Error('empty');
     sheet.words = words; sheet.at = new Date().toISOString(); sheet.error = ''; writeSheetCfg(sheet);
     const before = WORDS.length;
-    WORDS = number(words); source = 'sheet';
-    if (i === 0 && !busy) startDeck(shuffle(allWords()).slice(0, SIZE)); else renderCard();
-    if (!$('v-words').hidden) renderList();
+    applyWords(words, 'sheet');
     renderSheetStatus(before);
   } catch (err) {
     console.warn('sheet load failed', err);
@@ -142,6 +144,38 @@ function record(result, w) {
 }
 function allWords() { return db.added.concat(WORDS); }
 
+// ---------- sets（シート＝セット） ----------
+const SETS_KEY = 'word-review-sets';
+let selSets = (() => { try { return JSON.parse(localStorage.getItem(SETS_KEY)) || []; } catch (e) { return []; } })();
+function setNames() { const s = []; WORDS.forEach((w) => (w.sets || []).forEach((n) => { if (!s.includes(n)) s.push(n); })); return s; }
+function activeSets() { const names = setNames(); return selSets.filter((n) => names.includes(n)); }
+function pool() { const a = activeSets(); return a.length ? WORDS.filter((w) => (w.sets || []).some((n) => a.includes(n))) : allWords(); }
+function newDeck() { startDeck(shuffle(pool()).slice(0, SIZE)); }
+function countIn(name) { return WORDS.filter((w) => (w.sets || []).includes(name)).length; }
+function setChip(label, count, pressed, onClick) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
+  b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+  b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = label; b.querySelector('span').textContent = count + '語';
+  b.addEventListener('click', onClick); return b;
+}
+function renderSetChips() {
+  const box = $('setChips'), names = setNames(), act = activeSets();
+  box.hidden = names.length < 2; box.innerHTML = '';
+  if (box.hidden) return;
+  box.appendChild(setChip('全部', allWords().length, !act.length, () => { selSets = []; saveSets(); }));
+  names.forEach((n) => box.appendChild(setChip(n, countIn(n), act.includes(n), () => {
+    selSets = act.includes(n) ? act.filter((x) => x !== n) : act.concat([n]); saveSets();
+  })));
+}
+function saveSets() { try { localStorage.setItem(SETS_KEY, JSON.stringify(selSets)); } catch (e) {} renderSetChips(); newDeck(); }
+// 単語を差し替える（スプレッドシート／Apps Script から読み込んだとき）
+function applyWords(list, src) {
+  WORDS = number(list); source = src;
+  renderSetChips();
+  if (i === 0 && !busy) newDeck(); else renderCard();
+  if (!$('v-words').hidden) renderList();
+}
+
 // ---------- views ----------
 const views = ['cards', 'words', 'stats'];
 function show(v) {
@@ -179,7 +213,8 @@ function renderCard() {
   }
   const w = deck[i];
   $('no').textContent = w.no ? 'No. ' + w.no : '追加した単語';
-  $('pool').textContent = '全' + allWords().length + '語から';
+  const act = activeSets();
+  $('pool').textContent = act.length ? act.join('・') + '（' + pool().length + '語）から' : '全' + allWords().length + '語から';
   $('word').textContent = w.word;
   $('ex').textContent = w.example || '';
   $('meaning').textContent = w.meaning;
@@ -257,17 +292,17 @@ $('back').addEventListener('click', (e) => { const b = e.target.closest('[data-r
   wrap.addEventListener('pointercancel', end);
 })();
 $('retry').addEventListener('click', () => { if (missed.length) startDeck(missed.slice()); });
-$('restart').addEventListener('click', () => startDeck(shuffle(allWords()).slice(0, SIZE)));
+$('restart').addEventListener('click', () => newDeck());
 
 // ---------- word list ----------
-let limit = STEP;
+let limit = STEP, listSet = '';
 function wordRow(w) {
   const li = document.createElement('div'); li.className = 'sb-list-item';
   const s = db.stats[w.word];
   li.innerHTML = '<div class="wi"><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><div class="row" style="align-items:baseline"><span class="wi-w"></span><span></span></div><span class="wi-ex"></span></div><span class="badge"></span></div>';
   li.querySelector('.wi-w').textContent = w.word;
   li.querySelector('.wi-w').nextElementSibling.textContent = w.meaning;
-  li.querySelector('.wi-ex').textContent = w.example || '例文なし';
+  li.querySelector('.wi-ex').textContent = (w.example || '例文なし') + ((w.sets || []).length && setNames().length > 1 ? '　・' + w.sets.join('・') : '');
   const b = li.querySelector('.badge');
   if (s && s.last) {
     b.className = 'sb-badge' + (s.last === 'again' ? ' sb-badge-accent' : s.last === 'unsure' ? ' sb-badge-unsure' : '');
@@ -279,9 +314,17 @@ function wordRow(w) {
 function renderList() {
   const words = allWords();
   const q = $('q').value.trim().toLowerCase();
-  const m = q ? words.filter((w) => w.word.toLowerCase().includes(q) || w.meaning.includes(q)) : words;
+  const names = setNames();
+  if (listSet && !names.includes(listSet)) listSet = '';
+  const box = $('listSets'); box.hidden = names.length < 2; box.innerHTML = '';
+  if (!box.hidden) {
+    box.appendChild(setChip('全部', words.length, !listSet, () => { listSet = ''; limit = STEP; renderList(); }));
+    names.forEach((n) => box.appendChild(setChip(n, countIn(n), listSet === n, () => { listSet = n; limit = STEP; renderList(); })));
+  }
+  const inSet = listSet ? words.filter((w) => (w.sets || []).includes(listSet)) : words;
+  const m = q ? inSet.filter((w) => w.word.toLowerCase().includes(q) || w.meaning.includes(q)) : inSet;
   $('list-title').textContent = '登録した単語 ' + words.length + '語';
-  $('hits').hidden = !q; $('hits').textContent = m.length + '件見つかりました';
+  $('hits').hidden = !q && !listSet; $('hits').textContent = (listSet ? listSet + '：' : '') + m.length + (q ? '件見つかりました' : '語');
   const list = $('list'); list.innerHTML = '';
   m.slice(0, limit).forEach((w) => list.appendChild(wordRow(w)));
   if (!m.length) { const p = document.createElement('p'); p.className = 'muted'; p.style.padding = '24px 12px'; p.style.margin = '0'; p.textContent = '一致する単語はありません。'; list.appendChild(p); }
@@ -388,12 +431,13 @@ $('sheetForm').addEventListener('submit', (e) => {
   const url = $('sheetUrl').value.trim();
   if (url && !/^https:\/\/docs\.google\.com\/spreadsheets\//.test(url)) { setSheetStatus('Google スプレッドシートの URL を貼ってください。'); return; }
   sheet = { url }; writeSheetCfg(sheet);
-  if (!url) { WORDS = number(window.BUILTIN_WORDS || []); source = 'builtin'; renderSheetStatus(); renderList(); return; }
+  if (!url) { applyWords(window.BUILTIN_WORDS || [], 'builtin'); renderSheetStatus(); return; }
   syncSheet();
 });
 $('sheetReload').addEventListener('click', () => syncSheet());
 
-startDeck(shuffle(allWords()).slice(0, SIZE));
+renderSetChips();
+newDeck();
 show(location.hash.slice(1) || 'cards');
 renderSheetStatus();
 syncSheet();

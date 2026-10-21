@@ -9,6 +9,11 @@
  *      アクセスできるユーザー：全員
  * 4. 表示された URL（…/exec）をアプリの「記録」画面に貼る
  *
+ * 単語のセット：単語を入れたシートを増やすと、シート名がそのままアプリの「セット」になります。
+ * （「記録」シート、名前が「_」で始まるシート、非表示のシートは単語として読みません）
+ *
+ * コードを書き換えたあとは「デプロイ → デプロイを管理 → 編集（鉛筆）→ バージョン：新バージョン → デプロイ」で更新します。
+ *
  * このファイルは GitHub に載るので、ここの TOKEN は書き換えずに置いておき、
  * 合言葉は Apps Script のエディタの中だけで設定してください。
  */
@@ -57,10 +62,32 @@ function doPost(e) {
   return out_({ ok: true, n: rows.length });
 }
 
+// 単語：「記録」以外の全シートを、シート名＝セットとして返す
+// シート名が「_」で始まるシートと、非表示のシートは読みません
+function words_() {
+  const sets = [];
+  SpreadsheetApp.getActive().getSheets().forEach(function (sh) {
+    const name = sh.getName();
+    if (name === SHEET_NAME || name.charAt(0) === '_' || sh.isSheetHidden() || sh.getLastRow() < 2) return;
+    const values = sh.getDataRange().getDisplayValues();
+    const head = values[0].map(function (x) { return String(x).trim(); });
+    const find = function (re, fb) { for (let i = 0; i < head.length; i++) if (re.test(head[i])) return i; return fb; };
+    const iw = find(/^(単語|英単語|word)$/i, 0), im = find(/意味|meaning/i, 2), ie = find(/例文|example/i, 1);
+    const words = [];
+    values.slice(1).forEach(function (r) {
+      const w = String(r[iw] || '').trim(), m = String(r[im] || '').trim();
+      if (w && m) words.push({ word: w, meaning: m, example: String(r[ie] || '').trim() });
+    });
+    if (words.length) sets.push({ name: name, words: words });
+  });
+  return { ok: true, sets: sets };
+}
+
 // 日ごと・単語ごとの集計を返す
 function doGet(e) {
   const p = e.parameter || {};
   if (p.token !== TOKEN) return out_({ ok: false, error: 'token' }, p.callback);
+  if (p.action === 'words') return out_(words_(), p.callback);
   const sh = sheet_();
   const last = sh.getLastRow();
   const days = {}, words = {};

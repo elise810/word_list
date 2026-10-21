@@ -166,3 +166,8 @@ body.bgx-stripe,body.bgx-gingham,body.bgx-polka,body.bgx-confetti,body.bgx-wave,
 @media (max-width:600px){.fc-word{font-size:40px;line-height:48px;overflow-wrap:anywhere;word-break:normal}.fc-ex{font-size:20px;line-height:32px}.fc-meaning{font-size:22px;line-height:30px}}
 
 kbd{display:inline-block;min-width:1.6em;padding:1px 6px;border:1px solid var(--outline-variant);border-bottom-width:2px;border-radius:6px;background:var(--surface);font-family:var(--font-en);font-size:12px;line-height:16px;text-align:center;color:var(--on-surface)}
+
+/* ---------- sets ---------- */
+.chips.compact .chip{min-height:40px;flex-direction:row;align-items:center;gap:8px;padding:4px 16px;border-radius:9999px}
+.chips.compact .chip[aria-pressed="true"]{padding:2px 14px;background:var(--surface-container-high)}
+.chips.compact .chip span{font-family:var(--font-en)}
