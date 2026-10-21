@@ -174,3 +174,4 @@ kbd{display:inline-block;min-width:1.6em;padding:1px 6px;border:1px solid var(--
 .chips-label{display:inline-flex;align-items:center;margin-right:4px}
 .chips.compact .chip.st-again b::before,.chips.compact .chip.st-unsure b::before,.chips.compact .chip.st-known b::before,.chips.compact .chip.st-new b::before{content:"";display:inline-block;width:10px;height:10px;border-radius:9999px;margin-right:6px;vertical-align:0}
 .chip.st-again b::before{background:#e43200}.chip.st-unsure b::before{background:#5bafc1}.chip.st-known b::before{background:#87cc5a}.chip.st-new b::before{background:#e9ecef;box-shadow:inset 0 0 0 1px #b4b4b4}
+#stage[data-ex="off"] #ex,#stage[data-ex="back"]:not([data-flipped]) #ex{display:none}

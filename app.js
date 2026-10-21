@@ -169,6 +169,22 @@ function renderStatusChips() {
     c.classList.add('st-' + k); box.appendChild(c);
   });
 }
+// ---------- 例文の出し方（表に出す／答えで見る／出さない） ----------
+const EX_KEY = 'word-review-example';
+const EX_MODES = [['front', '表に出す'], ['back', '答えで見る'], ['off', '出さない']];
+let exMode = (() => { try { return localStorage.getItem(EX_KEY) || 'front'; } catch (e) { return 'front'; } })();
+function renderExChips() {
+  const box = $('exChips'); box.innerHTML = '';
+  const lab = document.createElement('span'); lab.className = 'small muted chips-label'; lab.textContent = '例文'; box.appendChild(lab);
+  EX_MODES.forEach(([k, label]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
+    b.setAttribute('aria-pressed', exMode === k ? 'true' : 'false');
+    b.innerHTML = '<b></b>'; b.querySelector('b').textContent = label;
+    b.addEventListener('click', () => { exMode = k; try { localStorage.setItem(EX_KEY, k); } catch (e) {} applyExMode(); });
+    box.appendChild(b);
+  });
+}
+function applyExMode() { $('stage').setAttribute('data-ex', exMode); renderExChips(); }
 function saveStatus() { try { localStorage.setItem(STATUS_KEY, JSON.stringify(selStatus)); } catch (e) {} renderStatusChips(); newDeck(); }
 function newDeck() { startDeck(shuffle(pool()).slice(0, SIZE)); }
 function countIn(name) { return WORDS.filter((w) => (w.sets || []).includes(name)).length; }
@@ -462,6 +478,7 @@ $('sheetForm').addEventListener('submit', (e) => {
 $('sheetReload').addEventListener('click', () => syncSheet());
 
 renderSetChips();
+applyExMode();
 newDeck();
 show(location.hash.slice(1) || 'cards');
 renderSheetStatus();
