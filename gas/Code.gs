@@ -18,13 +18,16 @@
  * 合言葉は Apps Script のエディタの中だけで設定してください。
  */
 const TOKEN = 'ここを好きな合言葉に変える';
+// スプレッドシートの「拡張機能 → Apps Script」以外から作ったときは、単語シートの ID（URL の /d/ と /edit の間）をここに入れる
+const SPREADSHEET_ID = '';
+function ss_() { return SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActive(); }
 const SHEET_NAME = '記録';
 const HEADER = ['日時', '日付', '単語', '結果', '件数', '端末'];
 const LABEL = { known: '覚えた', unsure: '微妙', again: 'もう一度' };
 const KEY_OF = { '覚えた': 'known', '微妙': 'unsure', 'もう一度': 'again' };
 
 function sheet_() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = ss_();
   let sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) {
     sh = ss.insertSheet(SHEET_NAME);
@@ -66,7 +69,7 @@ function doPost(e) {
 // シート名が「_」で始まるシートと、非表示のシートは読みません
 function words_() {
   const sets = [];
-  SpreadsheetApp.getActive().getSheets().forEach(function (sh) {
+  ss_().getSheets().forEach(function (sh) {
     const name = sh.getName();
     if (name === SHEET_NAME || name.charAt(0) === '_' || sh.isSheetHidden() || sh.getLastRow() < 2) return;
     const values = sh.getDataRange().getDisplayValues();
