@@ -280,6 +280,50 @@ function confetti() {
   }
   clearTimeout(confetti.t); confetti.t = setTimeout(() => { box.innerHTML = ''; }, 1300);
 }
+// ---------- 答えたときのひとこと＆エフェクト ----------
+const CHEERS = {
+  known: ['覚えた！', 'やったね！', 'その調子！', 'ナイス！'],
+  unsure: ['あと少し！', 'ほぼ覚えてる！', 'いい線いってる！', 'もうひと押し！'],
+  again: ['次こそ覚える！', 'くり返しが力になる！', '伸びしろ発見！', '覚えるまで何度でも！']
+};
+function cheer(r) {
+  const c = $('cheer'), list = CHEERS[r];
+  c.textContent = list[Math.floor(Math.random() * list.length)];
+  c.className = 'cheer ' + r; void c.offsetWidth; c.classList.add('show');
+  clearTimeout(cheer.t); cheer.t = setTimeout(() => { c.className = 'cheer'; }, 1400);
+}
+function bubbles() { // もう一度：下から元気玉がわき上がる
+  const box = $('confetti'); box.innerHTML = '';
+  const colors = ['#e43200', '#ff6b3d', '#ff8c5a', '#ffd9cc'];
+  for (let n = 0; n < 26; n++) {
+    const s = document.createElement('span'); s.className = 'bubble';
+    const size = 8 + Math.round(Math.random() * 14);
+    s.style.width = s.style.height = size + 'px';
+    s.style.setProperty('--x0', Math.round(Math.random() * 360 - 180) + 'px');
+    s.style.setProperty('--dx', Math.round(Math.random() * 80 - 40) + 'px');
+    s.style.setProperty('--dy', -Math.round(200 + Math.random() * 220) + 'px');
+    s.style.background = colors[n % colors.length];
+    s.style.animationDelay = Math.round(Math.random() * 260) + 'ms';
+    box.appendChild(s);
+  }
+  clearTimeout(confetti.t); confetti.t = setTimeout(() => { box.innerHTML = ''; }, 1500);
+}
+function sparkles() { // 微妙：まわりでキラキラが光る
+  const box = $('confetti'); box.innerHTML = '';
+  const colors = ['#5bafc1', '#b4e5cc', '#87cc5a', '#ffd27a'];
+  for (let n = 0; n < 18; n++) {
+    const s = document.createElement('span'); s.className = 'star';
+    const size = 14 + Math.round(Math.random() * 18);
+    s.style.width = s.style.height = size + 'px';
+    s.style.setProperty('--dx', Math.round(Math.random() * 560 - 280) + 'px');
+    s.style.setProperty('--dy', -Math.round(40 + Math.random() * 300) + 'px');
+    s.style.setProperty('--r', Math.round(Math.random() * 90) + 'deg');
+    s.style.background = colors[n % colors.length];
+    s.style.animationDelay = Math.round(Math.random() * 350) + 'ms';
+    box.appendChild(s);
+  }
+  clearTimeout(confetti.t); confetti.t = setTimeout(() => { box.innerHTML = ''; }, 1500);
+}
 function answer(r) {
   if (busy || i >= deck.length) return;
   const w = deck[i];
@@ -290,7 +334,8 @@ function answer(r) {
   };
   if (reduce) { i++; renderCard(); return; }
   busy = true;
-  if (r === 'known') confetti();
+  if (r === 'known') confetti(); else if (r === 'unsure') sparkles(); else bubbles();
+  cheer(r);
   $('cardWrap').className = 'card-wrap ' + dirs[r];
   setTimeout(next, 520);
 }
