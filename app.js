@@ -149,7 +149,27 @@ const SETS_KEY = 'word-review-sets';
 let selSets = (() => { try { return JSON.parse(localStorage.getItem(SETS_KEY)) || []; } catch (e) { return []; } })();
 function setNames() { const s = []; WORDS.forEach((w) => (w.sets || []).forEach((n) => { if (!s.includes(n)) s.push(n); })); return s; }
 function activeSets() { const names = setNames(); return selSets.filter((n) => names.includes(n)); }
-function pool() { const a = activeSets(); return a.length ? WORDS.filter((w) => (w.sets || []).some((n) => a.includes(n))) : allWords(); }
+function setPool() { const a = activeSets(); return a.length ? WORDS.filter((w) => (w.sets || []).some((n) => a.includes(n))) : allWords(); }
+// ---------- 状態（最後の結果）で絞り込む ----------
+const STATUS_KEY = 'word-review-status';
+const STATUS = [['new', 'まだ'], ['again', 'もう一度'], ['unsure', '微妙'], ['known', '覚えた']];
+let selStatus = (() => { try { return JSON.parse(localStorage.getItem(STATUS_KEY)) || []; } catch (e) { return []; } })();
+function statusOf(w) { const s = db.stats[w.word]; return (s && s.last) || 'new'; }
+function pool() { const base = setPool(); return selStatus.length ? base.filter((w) => selStatus.includes(statusOf(w))) : base; }
+function renderStatusChips() {
+  const box = $('statusChips'), base = setPool();
+  box.innerHTML = '';
+  const lab = document.createElement('span'); lab.className = 'small muted chips-label'; lab.textContent = '出す単語'; box.appendChild(lab);
+  box.appendChild(setChip('すべて', base.length, !selStatus.length, () => { selStatus = []; saveStatus(); }));
+  STATUS.forEach(([k, label]) => {
+    const n = base.filter((w) => statusOf(w) === k).length;
+    const c = setChip(label, n, selStatus.includes(k), () => {
+      selStatus = selStatus.includes(k) ? selStatus.filter((x) => x !== k) : selStatus.concat([k]); saveStatus();
+    });
+    c.classList.add('st-' + k); box.appendChild(c);
+  });
+}
+function saveStatus() { try { localStorage.setItem(STATUS_KEY, JSON.stringify(selStatus)); } catch (e) {} renderStatusChips(); newDeck(); }
 function newDeck() { startDeck(shuffle(pool()).slice(0, SIZE)); }
 function countIn(name) { return WORDS.filter((w) => (w.sets || []).includes(name)).length; }
 function setChip(label, count, pressed, onClick) {
@@ -162,12 +182,13 @@ function renderSetChips() {
   const box = $('setChips'), names = setNames(), act = activeSets();
   box.hidden = names.length < 2; box.innerHTML = '';
   if (box.hidden) return;
+  const lab = document.createElement('span'); lab.className = 'small muted chips-label'; lab.textContent = 'セット'; box.appendChild(lab);
   box.appendChild(setChip('全部', allWords().length, !act.length, () => { selSets = []; saveSets(); }));
   names.forEach((n) => box.appendChild(setChip(n, countIn(n), act.includes(n), () => {
     selSets = act.includes(n) ? act.filter((x) => x !== n) : act.concat([n]); saveSets();
   })));
 }
-function saveSets() { try { localStorage.setItem(SETS_KEY, JSON.stringify(selSets)); } catch (e) {} renderSetChips(); newDeck(); }
+function saveSets() { try { localStorage.setItem(SETS_KEY, JSON.stringify(selSets)); } catch (e) {} renderSetChips(); renderStatusChips(); newDeck(); }
 // 単語を差し替える（スプレッドシート／Apps Script から読み込んだとき）
 function applyWords(list, src) {
   WORDS = number(list); source = src;
@@ -194,9 +215,11 @@ let deck = [], i = 0, counts = { known: 0, unsure: 0, again: 0 }, missed = [], b
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = matchMedia('(pointer: coarse)').matches;
 function shuffle(a) { a = a.slice(); for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
-function startDeck(d) { deck = d; i = 0; counts = { known: 0, unsure: 0, again: 0 }; missed = []; renderCard(); }
+function startDeck(d) { deck = d; i = 0; counts = { known: 0, unsure: 0, again: 0 }; missed = []; renderStatusChips(); renderCard(); }
 function renderCard() {
-  const total = deck.length, finished = i >= total;
+  const total = deck.length, empty = total === 0, finished = !empty && i >= total;
+  $('emptyCard').hidden = !empty;
+  if (empty) { $('stage').hidden = true; $('doneCard').hidden = true; $('pos').textContent = '0 / 0'; $('bar').firstElementChild.style.width = '0'; return; }
   $('pos').textContent = Math.min(i + 1, total) + ' / ' + total;
   $('bar').firstElementChild.style.width = Math.round(i / total * 100) + '%';
   $('bar').setAttribute('aria-valuenow', i); $('bar').setAttribute('aria-valuemax', total);
@@ -207,14 +230,16 @@ function renderCard() {
   const t = db.days[today()]; const n = t ? t.known + t.unsure + t.again : 0;
   $('todayLine').textContent = '今日の合計 ' + n + '語';
   if (finished) {
+    renderStatusChips();
     $('doneSum').textContent = '覚えた ' + counts.known + '語・微妙 ' + counts.unsure + '語・もう一度 ' + counts.again + '語';
     $('retry').disabled = missed.length === 0;
     return;
   }
   const w = deck[i];
   $('no').textContent = w.no ? 'No. ' + w.no : '追加した単語';
-  const act = activeSets();
-  $('pool').textContent = act.length ? act.join('・') + '（' + pool().length + '語）から' : '全' + allWords().length + '語から';
+  const act = activeSets(), st = STATUS.filter(([k]) => selStatus.includes(k)).map(([, l]) => l);
+  const label = act.concat(st);
+  $('pool').textContent = label.length ? label.join('・') + '（' + pool().length + '語）から' : '全' + allWords().length + '語から';
   $('word').textContent = w.word;
   $('ex').textContent = w.example || '';
   $('meaning').textContent = w.meaning;
